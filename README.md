@@ -31,9 +31,13 @@ Para aprovechar al máximo esta reunión es importante que estén familiarizados
 + Paquetes de R: tidyverse, readxl, writexl, pals y scales, los cuales puedes instalar con la instrucción:
 
 `install.packages("tidyverse", dependencies = TRUE)`
+
 `install.packages("readxl", dependencies = TRUE)`
+
 `install.packages("writexl", dependencies = TRUE)`
+
 `install.packages("pals")`
+
 `install.packages("scales")`
 
 ## Código de Conducta
