@@ -1,13 +1,112 @@
 ---
-title: "Preprocesamiento y limpieza de datos masivos en R"
+title: "**Preprocesamiento y limpieza de datos masivos en R**"
 author: "David Felipe Rendón Luna"
 date: "`r Sys.Date()`"
-output: html_document
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
 ```
 
-# Introducción 
+# **Introducción**
+
+Cuando se nos presenta un proyecto donde se generan datos de forma continua, llámese una serie de experimentos en un laboratorio o el quehacer diario de una empresa, es común encontrarnos con datos almacenados en archivos que no tiene formatos idénticos, o bien que puede tener información incompleta por el formato de guardado, o que tenga errores tipográficos. Estas situaciones simplemente y llanamente entorpecen la producción de scripts de lectura automatizada de archivos, y en lugar de ahorrar tiempo, lo terminamos perdiendo.
+
+En este minitaller de Rladies, trabajaremos con una serie de datos que deliberadamente fueron producidos para que su lectura automatizada sea complicada. Nuestro objetivo es comprender cómo están organizados estos datos, pensar en los posibles formas de detectar errores de lectura o de formato, limpiar los datos que se nos presentan, revisarlos, organizarlos y producir gráficas que tengan algún significado.
+
+# **Los datos**
+
+El primer paso es conocer los datos. Para este minitaller, utilizaremos las siguientes bases de datos:
+- flights y planes de la paquetería nycflights13.
+- DNase preinstalada en R
+
+Podemos consultar la ayuda de estas bases de datos con "?"
+
+```{r, eval = FALSE}
+library(nycflights13)
+?flights
+?planes
+?DNase
+```
+
+La base de datos nycflights13 ha sido cortada y partida en un archivo de excel con varias hojas, o bien en diferentes archivos dentro de una misma carpeta. DNAse fue almacenada en un archivo independiente.
+
+
+# **Enfrentándonos a los datos: lectura y errores**
+
+## Una carpeta, un archivo
+
+Lo primera aproximación, y la más evidente, es la lectura de un archivo individual. Para ello podemos utilizar las funciones read_* que están incluidas en readr (cargado junto al tidyverse). Vamos a leer el archivo de dnase.tsv.
+
+```{r}
+read_tsv(file = "./DATA/DNASE/dnase.tsv", col_names = TRUE)
+```
+
+Comparemos con la base de datos original:
+
+```{r}
+head(DNase)
+```
+
+Notamos que existe algo diferente en el archivo original y podemos llegar a hacer unas inferencias. El archivo que intentamos cargar pudo haberse producido en Excel, generado celdas combinadas y producido NA al guardar como .tsv. Ademas, no queremos que los nombres de columnas esten cortados sino que reflejen todo lo que contienen. Por último, la columna Run y Concentration debe interpretarse como un factor ordenado. Hay que corregir eso:
+
+```{r}
+df_dnase <- read_tsv(file = "./DATA/DNASE/dnase.tsv", col_names = TRUE) %>% 
+  fill(run, .direction = "down") %>% 
+  rename(Run = run,
+    Concentration = conc,
+    Density = density) %>% 
+  mutate(Run = factor(Run, labels = unique(Run)),
+         Concentration = factor(Concentration, labels = sort(unique(Concentration)), ordered = TRUE))
+
+df_dnase
+```
+
+## Una carpeta, muchos archivos
+
+## Un archivo, muchas hojas (estructura de excel)
+
+## Un archivo, de estructura variable
+
+# **Definir el tipo de datos de columnas**
+
+# **Revisar tipos de datos**
+
+# **Pivotar a largo**
+
+# **Pivotar a ancho**
+```{r}
+pivot_wider(DNase %>% mutate(Replicate = rep(c(1,2), length.out = nrow(DNase))), names_from = conc, names_prefix = "Conc_", values_from = density, )
+```
+
+# **Unión a la izquierda**
+```{r}
+flights %>% 
+  select(year, month, day, dep_time, origin, dest) %>% 
+  left_join(., airports %>% select(faa, lon), by = join_by("origin" == "faa")) %>% 
+  rename(origin_lon = lon) %>% 
+  left_join(., airports %>% select(faa, lon), by = join_by("dest" == "faa")) %>% 
+  rename(dest_lon = lon) %>% 
+  filter(!is.na(origin_lon) & !is.na(dest_lon)) %>% 
+  mutate(Meridian_100 = case_when(
+    origin_lon > -100 & dest_lon < -100 ~ "W-to-E",
+    .default = "Not_crossed"
+  )) %>% 
+  group_by(origin, Meridian_100) %>% 
+  summarise(Count = n()) %>% 
+  mutate(Rel_count = Count/sum(Count))
+
+
+```
+
+
+
+# **Obtencion de estadistica básica**
+
+# **Graficación**
 
