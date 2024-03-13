@@ -11,6 +11,7 @@ output:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
+library(readxl)
 ```
 
 # **Introducción**
@@ -37,7 +38,7 @@ library(nycflights13)
 La base de datos nycflights13 ha sido cortada y partida en un archivo de excel con varias hojas, o bien en diferentes archivos dentro de una misma carpeta. DNAse fue almacenada en un archivo independiente.
 
 
-# **Enfrentándonos a los datos: lectura y errores**
+# **Enfrentándonos a los datos: lectura, errores y limpieza**
 
 ## Una carpeta, un archivo
 
@@ -63,19 +64,58 @@ df_dnase <- read_tsv(file = "./DATA/DNASE/dnase.tsv", col_names = TRUE) %>%
     Density = density) %>% 
   mutate(Run = factor(Run, labels = unique(Run)),
          Concentration = factor(Concentration, labels = sort(unique(Concentration)), ordered = TRUE))
-
 df_dnase
 ```
 
+De esta manera tenemos la información correctamente organizada para poder ser analizada. El formato del df que se presenta es un formato llamado largo, lo cual revisaremos en otra sección.
+
 ## Una carpeta, muchos archivos
+
+
 
 ## Un archivo, muchas hojas (estructura de excel)
 
+Una estrategia muy utilizada para tener concentrada una gran cantidad de información relacionada de alguna manera generar un solo libro de excel y aprovechar las diferentes hojas para ingresar información. Es importante que si la información es repetitiva, las tablas de las diferentes hojas tambien tengas nombres de columnas y ubicaciones similares. Sin embargo esto puede no ser del todo correcto y puede dar lugar a errores de lectura.
+
+Supongamos que tenemos un libro de excel donde se guardaron los registros de un experimento tipo cinética donde se tenían diferentes ratones y se media el volumen de tumores que se les desarrollaban, a lo largo de diferentes fechas. El investigador pudo haber incluido una columna de fechas para tener todo organizado en una sola tabla, pero decidió separar cada fecha en que se revisó el experimento en diferentes hojas del libro de excel.
+
+*Revisemos el libro de excel*
+
+*¿Que problemas presenta el libro a simple vista? ¿Puedes identificarlos? ¿Que podemos hacer para resolverlos, antes de meternos con el código?*
+
+Vamos al código. Tendremos que utilizar algunas funciones de la paquetería *readxl*:
+
+```{r}
+sheets <- excel_sheets("./DATA/ONE_EXCEL/GE681B_final.xlsx")
+dates_formated <- sheets %>% 
+  str_trim() %>% 
+  str_match("[0-9]{2}-.{3}-[0-9]{2}") %>% 
+  as.vector() %>% 
+  dmy()
+  
+for (SHEET in sheets) {
+  read_xlsx("DATA/ONE_EXCEL/GE681B_final.xlsx", sheet = SHEET, skip = 5, col_names = FALSE) %>% 
+    select(c(1:7, 12)) %>% 
+    rename(Cage = 1,
+           Cohort = 2,
+           Tumor_ID = 3,
+           DOB = 4,
+           Injection = 5,
+           Density = 6,
+           Mouse = 7, 
+           Volume = 8) %>% 
+    fill(Cage, Density) %>% 
+    mutate_at(c("DOB", "Injection"), ymd) %>% 
+    filter(!is.na(DOB))
+}
+
+
+```
+
 ## Un archivo, de estructura variable
 
-# **Definir el tipo de datos de columnas**
 
-# **Revisar tipos de datos**
+
 
 # **Pivotar a largo**
 
@@ -85,6 +125,16 @@ pivot_wider(DNase %>% mutate(Replicate = rep(c(1,2), length.out = nrow(DNase))),
 ```
 
 # **Unión a la izquierda**
+
+Imaginemos que somos analistas de datos de una empresa aeroportuaria y nos piden resolver lo siguiente:
+
+"Necesitamos identificar la frecuencia relativa de viajes desde los 3 principales aeropuertos de New York que cruzan el meridiano 100 (merididiano que aproximadamente divide a EEUU en Oeste y Este) para identificar si existe algun aerouperto con una frecuencia relativa menor que viajan al Oeste de EEUU, para distribuir más equitativamente la carga de viajes de salida"
+
+
+
+
+
+
 ```{r}
 flights %>% 
   select(year, month, day, dep_time, origin, dest) %>% 
@@ -94,7 +144,7 @@ flights %>%
   rename(dest_lon = lon) %>% 
   filter(!is.na(origin_lon) & !is.na(dest_lon)) %>% 
   mutate(Meridian_100 = case_when(
-    origin_lon > -100 & dest_lon < -100 ~ "W-to-E",
+    dest_lon < -100 ~ "W-to-E",
     .default = "Not_crossed"
   )) %>% 
   group_by(origin, Meridian_100) %>% 
