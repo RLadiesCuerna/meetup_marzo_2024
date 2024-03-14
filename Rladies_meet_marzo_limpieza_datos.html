@@ -430,12 +430,15 @@ el archivo de dnase.tsv.</p>
 <p>Comparemos con la base de datos original:</p>
 <pre class="r"><code>head(DNase)</code></pre>
 <p>Notamos que existe algo diferente en el archivo original y podemos
-llegar a hacer unas inferencias: - El archivo que intentamos cargar pudo
-haberse producido en Excel, generado celdas combinadas y producido NA al
-guardar como .tsv. - Ademas, no queremos que los nombres de columnas
-esten cortados sino que reflejen todo lo que contienen. - Por último, la
-columna Run y Concentration debe interpretarse como un factor ordenado.
-Hay que corregir eso:</p>
+llegar a hacer unas inferencias:</p>
+<ul>
+<li>El archivo que intentamos cargar pudo haberse producido en Excel,
+generado celdas combinadas y producido NA al guardar como .tsv.</li>
+<li>Ademas, no queremos que los nombres de columnas esten cortados sino
+que reflejen todo lo que contienen.</li>
+<li>Por último, la columna Run y Concentration debe interpretarse como
+un factor ordenado. Hay que corregir eso:</li>
+</ul>
 <pre class="r"><code>df_dnase &lt;- read_tsv(file = &quot;./DATA/DNASE/dnase.tsv&quot;, col_names = TRUE) %&gt;% 
   fill(run, .direction = &quot;down&quot;) %&gt;% 
   rename(Run = run,
@@ -628,9 +631,45 @@ carga de viajes de salida”</p>
 </div>
 <div id="obtención-de-estadística-básica" class="section level1">
 <h1><strong>Obtención de estadística básica</strong></h1>
+<p>Vamos a obtener utilizar de nuevo la base de datos flights. Vamos a
+limpiarla para eliminar vuelos cancelados y aquellos que tuvieron más de
+60 minutos de retraso. Luego, vamos a producir una gráfica de barras
+donde podamos ver el promedio y la desviación estandar en tiempos de
+retraso, graficando en facetas los diferentes aeroupertos de la base de
+datos.</p>
+<pre class="r"><code># Limpiar y obtener estadistica básica
+df_flights_stat &lt;- flights %&gt;% 
+  filter(!is.na(dep_time), dep_delay &gt; 60) %&gt;% 
+  select(month, origin, dep_delay) %&gt;% 
+  group_by(month, origin) %&gt;% 
+  summarise(Count = n(), Mean = mean(dep_delay), SD = sd(dep_delay)) %&gt;% 
+  mutate(month = factor(month, levels = 1:12, ordered = TRUE)) %&gt;% 
+  ungroup() %&gt;% 
+  left_join(data.frame(
+    month = factor(1:12, levels = 1:12, ordered = TRUE),
+    MONTH = month.abb), by = &quot;month&quot;) %&gt;% 
+  select(!month) %&gt;% 
+  relocate(MONTH, .before = 1) %&gt;% 
+  mutate(MONTH = factor(MONTH, levels = month.abb, ordered = TRUE))</code></pre>
 </div>
 <div id="gráfica" class="section level1">
 <h1><strong>Gráfica</strong></h1>
+<pre class="r"><code>df_flights_stat %&gt;% 
+ggplot(aes(x = MONTH, y = Mean, fill = MONTH)) +
+  facet_wrap(~ origin) + 
+  geom_bar(stat = &quot;identity&quot;) +
+  geom_hline(yintercept = 180, linetype = &quot;dashed&quot;, color = &quot;red&quot;)+
+  geom_errorbar(aes(ymin = Mean - SD , ymax = Mean + SD)) +
+  scale_y_continuous(expand = c(0,0)) + 
+  scale_fill_manual(values = pals::brewer.set1(12)) +
+  labs(y = &quot;Mean delay of departure (min)&quot;, x = &quot;Month&quot;) +
+  theme_bw() +
+  theme(axis.title = element_text(size = 16, face = &quot;bold&quot;),
+        axis.text.x = element_text(size = 10, angle = 45, color = &quot;black&quot;, hjust = 1),
+        axis.text.y = element_text(size = 14, color = &quot;black&quot;),
+        strip.background = element_blank(),
+        strip.text = element_text(size = 16, face = &quot;bold&quot;),
+        legend.position = &quot;none&quot;)</code></pre>
 </div>
 
 
