@@ -11,7 +11,7 @@
 
 <meta name="author" content="David Felipe Rendón Luna" />
 
-<meta name="date" content="2024-03-12" />
+<meta name="date" content="2024-03-13" />
 
 <title>Preprocesamiento y limpieza de datos masivos en R</title>
 
@@ -353,7 +353,7 @@ display: none;
 <h1 class="title toc-ignore"><strong>Preprocesamiento y limpieza de
 datos masivos en R</strong></h1>
 <h4 class="author">David Felipe Rendón Luna</h4>
-<h4 class="date">2024-03-12</h4>
+<h4 class="date">2024-03-13</h4>
 
 </div>
 
@@ -362,32 +362,22 @@ datos masivos en R</strong></h1>
 <li><a href="#introducción" id="toc-introducción"><strong>Introducción</strong></a></li>
 <li><a href="#los-datos" id="toc-los-datos"><strong>Los
 datos</strong></a></li>
-<li><a href="#lógica-de-lectura-de-información" id="toc-lógica-de-lectura-de-información"><strong>Lógica de lectura de
-información</strong></a>
+<li><a href="#enfrentándonos-a-los-datos-lectura-errores-y-limpieza" id="toc-enfrentándonos-a-los-datos-lectura-errores-y-limpieza"><strong>Enfrentándonos
+a los datos: lectura, errores y limpieza</strong></a>
 <ul>
 <li><a href="#una-carpeta-un-archivo" id="toc-una-carpeta-un-archivo">Una carpeta, un archivo</a></li>
-<li><a href="#una-carpeta-muchos-archivos" id="toc-una-carpeta-muchos-archivos">Una carpeta, muchos
-archivos</a></li>
 <li><a href="#un-archivo-muchas-hojas-estructura-de-excel" id="toc-un-archivo-muchas-hojas-estructura-de-excel">Un archivo, muchas
 hojas (estructura de excel)</a></li>
+<li><a href="#una-carpeta-muchos-archivos" id="toc-una-carpeta-muchos-archivos">Una carpeta, muchos
+archivos</a></li>
 </ul></li>
-<li><a href="#definir-el-tipo-de-datos-de-columnas" id="toc-definir-el-tipo-de-datos-de-columnas"><strong>Definir el tipo de
-datos de columnas</strong></a></li>
-<li><a href="#revisar-tipos-de-datos-numéricos" id="toc-revisar-tipos-de-datos-numéricos"><strong>Revisar tipos de
-datos: numéricos</strong></a></li>
-<li><a href="#revisar-tipos-de-datos-caracteres-y-factores" id="toc-revisar-tipos-de-datos-caracteres-y-factores"><strong>Revisar
-tipos de datos: caracteres y factores</strong></a></li>
-<li><a href="#revisar-tipos-de-datos-fechas" id="toc-revisar-tipos-de-datos-fechas"><strong>Revisar tipos de datos:
-fechas</strong></a></li>
-<li><a href="#pivotar-a-largo" id="toc-pivotar-a-largo"><strong>Pivotar
-a largo</strong></a></li>
-<li><a href="#pivotar-a-ancho" id="toc-pivotar-a-ancho"><strong>Pivotar
-a ancho</strong></a></li>
+<li><a href="#pivotar" id="toc-pivotar"><strong>Pivotar</strong></a></li>
 <li><a href="#unión-a-la-izquierda" id="toc-unión-a-la-izquierda"><strong>Unión a la
 izquierda</strong></a></li>
-<li><a href="#obtencion-de-estadistica-básica" id="toc-obtencion-de-estadistica-básica"><strong>Obtencion de
-estadistica básica</strong></a></li>
-<li><a href="#graficación" id="toc-graficación"><strong>Graficación</strong></a></li>
+<li><a href="#extra" id="toc-extra"><strong>Extra</strong></a></li>
+<li><a href="#obtención-de-estadística-básica" id="toc-obtención-de-estadística-básica"><strong>Obtención de
+estadística básica</strong></a></li>
+<li><a href="#gráfica" id="toc-gráfica"><strong>Gráfica</strong></a></li>
 </ul>
 </div>
 
@@ -415,125 +405,232 @@ significado.</p>
 utilizaremos las siguientes bases de datos: - flights y planes de la
 paquetería nycflights13. - DNase preinstalada en R</p>
 <p>Podemos consultar la ayuda de estas bases de datos con “?”</p>
-<pre class="r"><code>library(nycflights13)
-?flights
+<pre class="r"><code>?flights
 ?planes
 ?DNase</code></pre>
-<p>La base de datos nycflights13 ha sido cortada y partida en un archivo
-de excel con varias hojas, o bien en diferentes archivos dentro de una
-misma carpeta. DNAse fue almacenada en un archivo independiente.</p>
+<p>Además vamos a trabajar con algunos archivos de datos reales:</p>
+<ul>
+<li>GE681B_final.xlsx: contiene una cinetica de crecimiento de tumores
+en ratones. Es un excel organizado en varias hojas.</li>
+<li>La carpeta MANY_EXCELS: contiene archivos provenientes de placas de
+384 pozos donde se distribuyeron diferentes set de drogas y se leyó la
+absorbancia celular a lo largo de 7 dias.</li>
+</ul>
 </div>
-<div id="lógica-de-lectura-de-información" class="section level1">
-<h1><strong>Lógica de lectura de información</strong></h1>
+<div id="enfrentándonos-a-los-datos-lectura-errores-y-limpieza" class="section level1">
+<h1><strong>Enfrentándonos a los datos: lectura, errores y
+limpieza</strong></h1>
 <div id="una-carpeta-un-archivo" class="section level2">
 <h2>Una carpeta, un archivo</h2>
 <p>Lo primera aproximación, y la más evidente, es la lectura de un
-archivo individual. Para ello podemos utilizar las funciones read_* que
-están incluidas en readr (cargado junto al tidyverse). Vamos a leer el
-archivo de dnase.tsv.</p>
+archivo individual. Para ello vamos a utilizar las funciones read_* que
+están incluidas en readr (cargado junto al tidyverse). tenemos que leer
+el archivo de dnase.tsv.</p>
 <pre class="r"><code>read_tsv(file = &quot;./DATA/DNASE/dnase.tsv&quot;, col_names = TRUE)</code></pre>
-<pre><code>## Rows: 176 Columns: 3
-## ── Column specification ────────────────────────────────────────────────────────
-## Delimiter: &quot;\t&quot;
-## dbl (3): run, conc, density
-## 
-## ℹ Use `spec()` to retrieve the full column specification for this data.
-## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.</code></pre>
-<pre><code>## # A tibble: 176 × 3
-##      run   conc density
-##    &lt;dbl&gt;  &lt;dbl&gt;   &lt;dbl&gt;
-##  1     1 0.0488   0.017
-##  2    NA 0.0488   0.018
-##  3    NA 0.195    0.121
-##  4    NA 0.195    0.124
-##  5    NA 0.391    0.206
-##  6    NA 0.391    0.215
-##  7    NA 0.781    0.377
-##  8    NA 0.781    0.374
-##  9    NA 1.56     0.614
-## 10    NA 1.56     0.609
-## # ℹ 166 more rows</code></pre>
 <p>Comparemos con la base de datos original:</p>
 <pre class="r"><code>head(DNase)</code></pre>
-<pre><code>##   Run       conc density
-## 1   1 0.04882812   0.017
-## 2   1 0.04882812   0.018
-## 3   1 0.19531250   0.121
-## 4   1 0.19531250   0.124
-## 5   1 0.39062500   0.206
-## 6   1 0.39062500   0.215</code></pre>
 <p>Notamos que existe algo diferente en el archivo original y podemos
-llegar a hacer unas inferencias. El archivo que intentamos cargar pudo
+llegar a hacer unas inferencias: - El archivo que intentamos cargar pudo
 haberse producido en Excel, generado celdas combinadas y producido NA al
-guardar como .tsv. Ademas, no queremos que los nombres de columnas esten
-cortados sino que reflejen todo lo que contienen. Por último, la columna
-Run y Concentration debe interpretarse como un factor ordenado. Hay que
-corregir eso:</p>
+guardar como .tsv. - Ademas, no queremos que los nombres de columnas
+esten cortados sino que reflejen todo lo que contienen. - Por último, la
+columna Run y Concentration debe interpretarse como un factor ordenado.
+Hay que corregir eso:</p>
 <pre class="r"><code>df_dnase &lt;- read_tsv(file = &quot;./DATA/DNASE/dnase.tsv&quot;, col_names = TRUE) %&gt;% 
   fill(run, .direction = &quot;down&quot;) %&gt;% 
   rename(Run = run,
     Concentration = conc,
     Density = density) %&gt;% 
-  mutate(Run = factor(Run, labels = unique(Run)),
-         Concentration = factor(Concentration, labels = sort(unique(Concentration)), ordered = TRUE))</code></pre>
-<pre><code>## Rows: 176 Columns: 3
-## ── Column specification ────────────────────────────────────────────────────────
-## Delimiter: &quot;\t&quot;
-## dbl (3): run, conc, density
-## 
-## ℹ Use `spec()` to retrieve the full column specification for this data.
-## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.</code></pre>
-</div>
-<div id="una-carpeta-muchos-archivos" class="section level2">
-<h2>Una carpeta, muchos archivos</h2>
+  mutate(Concentration = round(Concentration, 2),
+         Run = factor(Run, labels = unique(Run)),
+         Concentration = factor(Concentration, labels = sort(unique(Concentration)), ordered = TRUE))
+df_dnase</code></pre>
+<p>De esta manera tenemos la información correctamente organizada para
+poder ser analizada. El formato del df que se presenta es un formato
+llamado largo, lo cual revisaremos en otra sección.</p>
 </div>
 <div id="un-archivo-muchas-hojas-estructura-de-excel" class="section level2">
 <h2>Un archivo, muchas hojas (estructura de excel)</h2>
+<p>Otra estrategia utilizada para tener concentrada una gran cantidad de
+información relacionada de alguna manera generar un solo libro de excel
+y aprovechar las diferentes hojas para ingresar información. Es
+importante que si la información es repetitiva, las tablas de las
+diferentes hojas tambien tengas nombres de columnas y ubicaciones
+similares. Sin embargo esto puede no ser del todo correcto y puede dar
+lugar a errores de lectura.</p>
+<p>Supongamos que tenemos un libro de excel donde se guardaron los
+registros de un experimento tipo cinética donde se tenían diferentes
+ratones y se media el volumen de tumores que se les desarrollaban, a lo
+largo de diferentes fechas. El investigador pudo haber incluido una
+columna de fechas para tener todo organizado en una sola tabla, pero
+decidió separar cada fecha en que se revisó el experimento en diferentes
+hojas del libro de excel.</p>
+<p><em>Revisemos el libro de excel</em></p>
+<p><em>¿Que problemas presenta el libro a simple vista? ¿Puedes
+identificarlos? ¿Que podemos hacer para resolverlos, antes de meternos
+con el código?</em></p>
+<p>Vamos al código. Tendremos que utilizar algunas funciones de la
+paquetería <em>readxl</em>:</p>
+<pre class="r"><code>sheets &lt;- excel_sheets(&quot;./DATA/ONE_EXCEL/GE681B_final.xlsx&quot;)
+dates_formated &lt;- sheets %&gt;% 
+  str_trim() %&gt;% 
+  str_match(&quot;[0-9]{2}-.{3}-[0-9]{2}&quot;) %&gt;% 
+  as.vector() %&gt;% 
+  dmy()
+  
+
+list_df &lt;- list()
+for (SHEET in sheets) {
+  df_sheet &lt;- read_xlsx(&quot;DATA/ONE_EXCEL/GE681B_final.xlsx&quot;, sheet = SHEET, skip = 5, col_names = FALSE) %&gt;% 
+    select(c(1:7, 12)) %&gt;% 
+    rename(Cage = 1,
+           Cohort = 2,
+           Tumor_ID = 3,
+           DOB = 4,
+           Injection = 5,
+           Density = 6,
+           Mouse = 7, 
+           Volume = 8) %&gt;% 
+    fill(Cage, Density) %&gt;% 
+    mutate_at(c(&quot;DOB&quot;, &quot;Injection&quot;), ymd) %&gt;% 
+    filter(!is.na(DOB))
+  list_df[[SHEET]] &lt;- df_sheet
+}
+
+df &lt;- bind_rows(list_df)
+df</code></pre>
+</div>
+<div id="una-carpeta-muchos-archivos" class="section level2">
+<h2>Una carpeta, muchos archivos</h2>
+<p>Podemos tener resultados de diferentes experimentos previamente
+formateados en diferentes archivos dentro de una misma carpeta.</p>
+<pre class="r"><code>filenames &lt;- dir(&quot;./DATA/MANY_EXCELS/&quot;)
+
+list_df_plates &lt;- list()
+
+# Numero de archivos
+n_files &lt;- length(filenames)
+
+# Empezar barra de progreso
+pb &lt;- progress_bar$new(format = &quot;(:spin) [:bar] :percent [Elapsed time: :elapsedfull || Estimated time remaining: :eta]&quot;,
+                       total = n_files,
+                       complete = &quot;=&quot;,   
+                       incomplete = &quot;-&quot;, 
+                       current = &quot;&gt;&quot;,    
+                       clear = FALSE,    # If TRUE, clears the bar when finish
+                       width = 100)
+
+for (FILE in filenames) {
+  # Actualizar barra
+  pb$tick()
+  
+  # Obtener info de FILE
+  vec_split &lt;- str_split_1(FILE, &quot;-|\\.&quot;)
+  
+  # Distribuir
+  Model &lt;- vec_split[1]
+  Day &lt;- vec_split[2] %&gt;% str_replace(&quot;Day&quot;, &quot;&quot;)
+  Method &lt;- vec_split[3]
+  Tier &lt;- vec_split[4] %&gt;% str_replace(&quot;Tier&quot;, &quot;&quot;)
+  
+  # Leer
+  df_raw &lt;- read_xlsx(paste0(&quot;./DATA/MANY_EXCELS/&quot;, FILE), sheet = &quot;End point&quot;, col_names = FALSE)
+  
+  # Ubicar inicio de tabla
+  inicio_df &lt;- df_raw %&gt;% 
+    select(1) %&gt;% 
+    pull() %&gt;% 
+    grep(&quot;Well&quot;, .)
+  
+  # Cortar, limpiar y agregar informacion
+  df_plate &lt;- df_raw %&gt;% 
+    slice(inicio_df + 1 : n()) %&gt;% 
+    rename(&quot;Row&quot; = 1,
+           &quot;Column&quot; = 2,
+           &quot;Content&quot; = 3,
+           &quot;Value&quot; = 4) %&gt;% 
+    select(Row:Value) %&gt;% 
+    mutate(Content = if_else(grepl(&quot;Blank&quot;, Content), 
+                             &quot;Blank&quot;,
+                             Content),
+           Value = as.integer(Value),
+           Well = paste0(Row, Column), .after = 2) %&gt;% 
+    add_column(Model = Model,
+               Day = Day,
+               Method = Method,
+               Tier = Tier,
+               .before = 1)
+
+  # Guardar
+  list_df_plates[[FILE]] &lt;- df_plate
+}
+
+bind_rows(list_df_plates)</code></pre>
 </div>
 </div>
-<div id="definir-el-tipo-de-datos-de-columnas" class="section level1">
-<h1><strong>Definir el tipo de datos de columnas</strong></h1>
-</div>
-<div id="revisar-tipos-de-datos-numéricos" class="section level1">
-<h1><strong>Revisar tipos de datos: numéricos</strong></h1>
-</div>
-<div id="revisar-tipos-de-datos-caracteres-y-factores" class="section level1">
-<h1><strong>Revisar tipos de datos: caracteres y factores</strong></h1>
-</div>
-<div id="revisar-tipos-de-datos-fechas" class="section level1">
-<h1><strong>Revisar tipos de datos: fechas</strong></h1>
-</div>
-<div id="pivotar-a-largo" class="section level1">
-<h1><strong>Pivotar a largo</strong></h1>
-</div>
-<div id="pivotar-a-ancho" class="section level1">
-<h1><strong>Pivotar a ancho</strong></h1>
-<pre class="r"><code>pivot_wider(DNase %&gt;% mutate(Replicate = rep(c(1,2), length.out = nrow(DNase))), names_from = conc, names_prefix = &quot;Conc_&quot;, values_from = density, )</code></pre>
-<pre><code>## # A tibble: 22 × 10
-##    Run   Replicate Conc_0.04882812 Conc_0.1953125 Conc_0.390625 Conc_0.78125
-##    &lt;ord&gt;     &lt;dbl&gt;           &lt;dbl&gt;          &lt;dbl&gt;         &lt;dbl&gt;        &lt;dbl&gt;
-##  1 1             1           0.017          0.121         0.206        0.377
-##  2 1             2           0.018          0.124         0.215        0.374
-##  3 2             1           0.045          0.137         0.225        0.401
-##  4 2             2           0.05           0.123         0.207        0.383
-##  5 3             1           0.07           0.173         0.277        0.434
-##  6 3             2           0.068          0.165         0.248        0.426
-##  7 4             1           0.011          0.118         0.2          0.364
-##  8 4             2           0.016          0.108         0.206        0.36 
-##  9 5             1           0.035          0.132         0.224        0.385
-## 10 5             2           0.035          0.135         0.22         0.39 
-## # ℹ 12 more rows
-## # ℹ 4 more variables: Conc_1.5625 &lt;dbl&gt;, Conc_3.125 &lt;dbl&gt;, Conc_6.25 &lt;dbl&gt;,
-## #   Conc_12.5 &lt;dbl&gt;</code></pre>
+<div id="pivotar" class="section level1">
+<h1><strong>Pivotar</strong></h1>
+<p>La base de datos DNase que trabajamos anteriormente representa un
+formato largo, donde file representa un registro único y contiene en sus
+columnas toda la información necesaria para identificarse como unica.
+Ante una mayor inspección de DNase, podemos ver que al eliminar la
+variable continua que representa una medición, existen registros
+repetidos. Si agregamos una columna extra que indique el número de
+repeticion de la medición, entonces estaremos frente a un verdadero
+formato largo:</p>
+<pre class="r"><code>df_dnase_long &lt;- df_dnase %&gt;% 
+  add_column(Replicate = rep(c(1,2), length.out = nrow(DNase)), .after =2)
+df_dnase_long</code></pre>
+<p>Podemos pivotar hacia el formato ancho. Hay que especificar una
+variable que funcione como definitoria de categorias y que pueda
+interpretarse como vectores individuales, así como los valores que van a
+ser reorganizados:</p>
+<pre class="r"><code>df_dnase_wide &lt;- df_dnase_long %&gt;% 
+  pivot_wider(names_from = Concentration, names_prefix = &quot;Conc_&quot;, values_from = Density)
+df_dnase_wide</code></pre>
+<p>Nótese el tamaño de los df y como se reduce la cantidad de
+intersecciones entre filas y columnas.</p>
+<p>Este formato puede regresarse a formato largo con algunas
+transformaciones:</p>
+<pre class="r"><code>df_dnase_wide %&gt;% 
+  pivot_longer(cols = contains(&quot;Conc&quot;), names_to = &quot;Concentration&quot;, values_to = &quot;Density&quot;, names_prefix = &quot;Conc_&quot; ) %&gt;%
+  mutate(Concentration = factor(Concentration, labels = sort(unique(Concentration)), ordered = TRUE)) %&gt;% 
+  arrange(Run, Concentration) %&gt;% 
+  relocate(Replicate, .before = last_col())</code></pre>
 </div>
 <div id="unión-a-la-izquierda" class="section level1">
 <h1><strong>Unión a la izquierda</strong></h1>
+<p>Imaginemos que somos analistas de datos de una empresa aeroportuaria
+y nos piden resolver lo siguiente:</p>
+<p>“Necesitamos identificar la frecuencia relativa de viajes desde los 3
+principales aeropuertos de New York que cruzan el meridiano 100
+(merididiano que aproximadamente divide a EEUU en Oeste y Este) para
+identificar si existe algun aerouperto con una frecuencia relativa menor
+que viajan al Oeste de EEUU, para distribuir más equitativamente la
+carga de viajes de salida”</p>
+<pre class="r"><code>flights %&gt;% 
+  select(year, month, day, dep_time, origin, dest) %&gt;% 
+  left_join(., airports %&gt;% select(faa, lon), by = join_by(&quot;origin&quot; == &quot;faa&quot;)) %&gt;% 
+  rename(origin_lon = lon) %&gt;% 
+  left_join(., airports %&gt;% select(faa, lon), by = join_by(&quot;dest&quot; == &quot;faa&quot;)) %&gt;% 
+  rename(dest_lon = lon) %&gt;% 
+  filter(!is.na(origin_lon) &amp; !is.na(dest_lon)) %&gt;% 
+  mutate(Meridian_100 = case_when(
+    dest_lon &lt; -100 ~ &quot;W-to-E&quot;,
+    .default = &quot;Not_crossed&quot;
+  )) %&gt;% 
+  group_by(origin, Meridian_100) %&gt;% 
+  summarise(Count = n()) %&gt;% 
+  mutate(Rel_count = Count/sum(Count))</code></pre>
 </div>
-<div id="obtencion-de-estadistica-básica" class="section level1">
-<h1><strong>Obtencion de estadistica básica</strong></h1>
+<div id="extra" class="section level1">
+<h1><strong>Extra</strong></h1>
 </div>
-<div id="graficación" class="section level1">
-<h1><strong>Graficación</strong></h1>
+<div id="obtención-de-estadística-básica" class="section level1">
+<h1><strong>Obtención de estadística básica</strong></h1>
+</div>
+<div id="gráfica" class="section level1">
+<h1><strong>Gráfica</strong></h1>
 </div>
 
 

@@ -12,6 +12,9 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(readxl)
+library(progress)
+library(nycflights13)
+options(readxl.show_progress = FALSE)
 ```
 
 # **Introducción**
@@ -29,53 +32,55 @@ El primer paso es conocer los datos. Para este minitaller, utilizaremos las sigu
 Podemos consultar la ayuda de estas bases de datos con "?"
 
 ```{r, eval = FALSE}
-library(nycflights13)
 ?flights
 ?planes
 ?DNase
 ```
 
-La base de datos nycflights13 ha sido cortada y partida en un archivo de excel con varias hojas, o bien en diferentes archivos dentro de una misma carpeta. DNAse fue almacenada en un archivo independiente.
+Además vamos a trabajar con algunos archivos de datos reales:
 
+- GE681B_final.xlsx: contiene una cinetica de crecimiento de tumores en ratones. Es un excel organizado en varias hojas.
+- La carpeta MANY_EXCELS: contiene archivos provenientes de placas de 384 pozos donde se distribuyeron diferentes set de drogas y se leyó la absorbancia celular a lo largo de 7 dias.
 
 # **Enfrentándonos a los datos: lectura, errores y limpieza**
 
 ## Una carpeta, un archivo
 
-Lo primera aproximación, y la más evidente, es la lectura de un archivo individual. Para ello podemos utilizar las funciones read_* que están incluidas en readr (cargado junto al tidyverse). Vamos a leer el archivo de dnase.tsv.
+Lo primera aproximación, y la más evidente, es la lectura de un archivo individual. Para ello vamos a utilizar las funciones read_* que están incluidas en readr (cargado junto al tidyverse). tenemos que leer el archivo de dnase.tsv.
 
-```{r}
+```{r, eval = FALSE}
 read_tsv(file = "./DATA/DNASE/dnase.tsv", col_names = TRUE)
 ```
 
 Comparemos con la base de datos original:
 
-```{r}
+```{r, eval = FALSE}
 head(DNase)
 ```
 
-Notamos que existe algo diferente en el archivo original y podemos llegar a hacer unas inferencias. El archivo que intentamos cargar pudo haberse producido en Excel, generado celdas combinadas y producido NA al guardar como .tsv. Ademas, no queremos que los nombres de columnas esten cortados sino que reflejen todo lo que contienen. Por último, la columna Run y Concentration debe interpretarse como un factor ordenado. Hay que corregir eso:
+Notamos que existe algo diferente en el archivo original y podemos llegar a hacer unas inferencias:
 
-```{r}
+- El archivo que intentamos cargar pudo haberse producido en Excel, generado celdas combinadas y producido NA al guardar como .tsv. 
+- Ademas, no queremos que los nombres de columnas esten cortados sino que reflejen todo lo que contienen. 
+- Por último, la columna Run y Concentration debe interpretarse como un factor ordenado. Hay que corregir eso:
+
+```{r, eval = FALSE}
 df_dnase <- read_tsv(file = "./DATA/DNASE/dnase.tsv", col_names = TRUE) %>% 
   fill(run, .direction = "down") %>% 
   rename(Run = run,
     Concentration = conc,
     Density = density) %>% 
-  mutate(Run = factor(Run, labels = unique(Run)),
+  mutate(Concentration = round(Concentration, 2),
+         Run = factor(Run, labels = unique(Run)),
          Concentration = factor(Concentration, labels = sort(unique(Concentration)), ordered = TRUE))
 df_dnase
 ```
 
 De esta manera tenemos la información correctamente organizada para poder ser analizada. El formato del df que se presenta es un formato llamado largo, lo cual revisaremos en otra sección.
 
-## Una carpeta, muchos archivos
-
-
-
 ## Un archivo, muchas hojas (estructura de excel)
 
-Una estrategia muy utilizada para tener concentrada una gran cantidad de información relacionada de alguna manera generar un solo libro de excel y aprovechar las diferentes hojas para ingresar información. Es importante que si la información es repetitiva, las tablas de las diferentes hojas tambien tengas nombres de columnas y ubicaciones similares. Sin embargo esto puede no ser del todo correcto y puede dar lugar a errores de lectura.
+Otra estrategia utilizada para tener concentrada una gran cantidad de información relacionada de alguna manera generar un solo libro de excel y aprovechar las diferentes hojas para ingresar información. Es importante que si la información es repetitiva, las tablas de las diferentes hojas tambien tengas nombres de columnas y ubicaciones similares. Sin embargo esto puede no ser del todo correcto y puede dar lugar a errores de lectura.
 
 Supongamos que tenemos un libro de excel donde se guardaron los registros de un experimento tipo cinética donde se tenían diferentes ratones y se media el volumen de tumores que se les desarrollaban, a lo largo de diferentes fechas. El investigador pudo haber incluido una columna de fechas para tener todo organizado en una sola tabla, pero decidió separar cada fecha en que se revisó el experimento en diferentes hojas del libro de excel.
 
@@ -85,7 +90,7 @@ Supongamos que tenemos un libro de excel donde se guardaron los registros de un 
 
 Vamos al código. Tendremos que utilizar algunas funciones de la paquetería *readxl*:
 
-```{r}
+```{r, eval = FALSE}
 sheets <- excel_sheets("./DATA/ONE_EXCEL/GE681B_final.xlsx")
 dates_formated <- sheets %>% 
   str_trim() %>% 
@@ -93,8 +98,10 @@ dates_formated <- sheets %>%
   as.vector() %>% 
   dmy()
   
+
+list_df <- list()
 for (SHEET in sheets) {
-  read_xlsx("DATA/ONE_EXCEL/GE681B_final.xlsx", sheet = SHEET, skip = 5, col_names = FALSE) %>% 
+  df_sheet <- read_xlsx("DATA/ONE_EXCEL/GE681B_final.xlsx", sheet = SHEET, skip = 5, col_names = FALSE) %>% 
     select(c(1:7, 12)) %>% 
     rename(Cage = 1,
            Cohort = 2,
@@ -107,21 +114,113 @@ for (SHEET in sheets) {
     fill(Cage, Density) %>% 
     mutate_at(c("DOB", "Injection"), ymd) %>% 
     filter(!is.na(DOB))
+  list_df[[SHEET]] <- df_sheet
 }
 
-
+df <- bind_rows(list_df)
+df
 ```
 
-## Un archivo, de estructura variable
+
+## Una carpeta, muchos archivos
+
+Podemos tener resultados de diferentes experimentos previamente formateados en diferentes archivos dentro de una misma carpeta. 
+
+```{r, eval = FALSE}
+filenames <- dir("./DATA/MANY_EXCELS/")
+
+list_df_plates <- list()
+
+# Numero de archivos
+n_files <- length(filenames)
+
+# Empezar barra de progreso
+pb <- progress_bar$new(format = "(:spin) [:bar] :percent [Elapsed time: :elapsedfull || Estimated time remaining: :eta]",
+                       total = n_files,
+                       complete = "=",   
+                       incomplete = "-", 
+                       current = ">",    
+                       clear = FALSE,    # If TRUE, clears the bar when finish
+                       width = 100)
+
+for (FILE in filenames) {
+  # Actualizar barra
+  pb$tick()
+  
+  # Obtener info de FILE
+  vec_split <- str_split_1(FILE, "-|\\.")
+  
+  # Distribuir
+  Model <- vec_split[1]
+  Day <- vec_split[2] %>% str_replace("Day", "")
+  Method <- vec_split[3]
+  Tier <- vec_split[4] %>% str_replace("Tier", "")
+  
+  # Leer
+  df_raw <- read_xlsx(paste0("./DATA/MANY_EXCELS/", FILE), sheet = "End point", col_names = FALSE)
+  
+  # Ubicar inicio de tabla
+  inicio_df <- df_raw %>% 
+    select(1) %>% 
+    pull() %>% 
+    grep("Well", .)
+  
+  # Cortar, limpiar y agregar informacion
+  df_plate <- df_raw %>% 
+    slice(inicio_df + 1 : n()) %>% 
+    rename("Row" = 1,
+           "Column" = 2,
+           "Content" = 3,
+           "Value" = 4) %>% 
+    select(Row:Value) %>% 
+    mutate(Content = if_else(grepl("Blank", Content), 
+                             "Blank",
+                             Content),
+           Value = as.integer(Value),
+           Well = paste0(Row, Column), .after = 2) %>% 
+    add_column(Model = Model,
+               Day = Day,
+               Method = Method,
+               Tier = Tier,
+               .before = 1)
+
+  # Guardar
+  list_df_plates[[FILE]] <- df_plate
+}
+
+bind_rows(list_df_plates)
+```
 
 
+# **Pivotar**
 
+La base de datos DNase que trabajamos anteriormente representa un formato largo, donde file representa un registro único y contiene en sus columnas toda la información necesaria para identificarse como unica. Ante una mayor inspección de DNase, podemos ver que al eliminar la variable continua que representa una medición, existen registros repetidos. Si agregamos una columna extra que indique el número de repeticion de la medición, entonces estaremos frente a un verdadero formato largo:
 
-# **Pivotar a largo**
+```{r, eval = FALSE}
+df_dnase_long <- df_dnase %>% 
+  add_column(Replicate = rep(c(1,2), length.out = nrow(DNase)), .after =2)
+df_dnase_long
+```
 
-# **Pivotar a ancho**
-```{r}
-pivot_wider(DNase %>% mutate(Replicate = rep(c(1,2), length.out = nrow(DNase))), names_from = conc, names_prefix = "Conc_", values_from = density, )
+Podemos pivotar hacia el formato ancho. Hay que especificar una variable que funcione como definitoria de categorias y que pueda interpretarse como vectores individuales, así como los valores que van a ser reorganizados:
+
+```{r, eval = FALSE}
+df_dnase_wide <- df_dnase_long %>% 
+  pivot_wider(names_from = Concentration, names_prefix = "Conc_", values_from = Density)
+df_dnase_wide
+```
+
+Nótese el tamaño de los df y como se reduce la cantidad de intersecciones entre filas y columnas.
+
+Este formato puede regresarse a formato largo con algunas transformaciones:
+
+```{r, eval = FALSE}
+df_dnase_wide %>% 
+  pivot_longer(cols = contains("Conc"), names_to = "Concentration", values_to = "Density", names_prefix = "Conc_" ) %>%
+  mutate(Concentration = factor(Concentration, labels = sort(unique(Concentration)), ordered = TRUE)) %>% 
+  arrange(Run, Concentration) %>% 
+  relocate(Replicate, .before = last_col())
+
 ```
 
 # **Unión a la izquierda**
@@ -130,12 +229,7 @@ Imaginemos que somos analistas de datos de una empresa aeroportuaria y nos piden
 
 "Necesitamos identificar la frecuencia relativa de viajes desde los 3 principales aeropuertos de New York que cruzan el meridiano 100 (merididiano que aproximadamente divide a EEUU en Oeste y Este) para identificar si existe algun aerouperto con una frecuencia relativa menor que viajan al Oeste de EEUU, para distribuir más equitativamente la carga de viajes de salida"
 
-
-
-
-
-
-```{r}
+```{r, eval = FALSE}
 flights %>% 
   select(year, month, day, dep_time, origin, dest) %>% 
   left_join(., airports %>% select(faa, lon), by = join_by("origin" == "faa")) %>% 
@@ -151,12 +245,15 @@ flights %>%
   summarise(Count = n()) %>% 
   mutate(Rel_count = Count/sum(Count))
 
+```
+
+# **Extra**
+
+# **Obtención de estadística básica**
+
+```{r}
 
 ```
 
-
-
-# **Obtencion de estadistica básica**
-
-# **Graficación**
+# **Gráfica**
 
