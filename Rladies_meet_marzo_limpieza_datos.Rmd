@@ -6,10 +6,15 @@ output:
   html_document:
     toc: true
     toc_depth: 2
+    toc_float: true
+    theme: sandstone
 ---
 
-```{r setup, include=FALSE}
+```{r setup, echo = FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, eval = FALSE}
 library(tidyverse)
 library(readxl)
 library(progress)
@@ -37,16 +42,16 @@ Podemos consultar la ayuda de estas bases de datos con "?"
 ?DNase
 ```
 
-Además vamos a trabajar con algunos archivos de datos reales:
+Además, vamos a trabajar con algunos archivos de datos reales:
 
-- GE681B_final.xlsx: contiene una cinetica de crecimiento de tumores en ratones. Es un excel organizado en varias hojas.
-- La carpeta MANY_EXCELS: contiene archivos provenientes de placas de 384 pozos donde se distribuyeron diferentes set de drogas y se leyó la absorbancia celular a lo largo de 7 dias.
+- GE681B_final.xlsx: contiene una cinética de crecimiento de tumores en ratones. Es un excel organizado en varias hojas.
+- La carpeta MANY_EXCELS: contiene archivos provenientes de placas de 384 pozos donde se distribuyeron diferentes set de drogas y se leyó la absorbancia celular a lo largo de 7 días.
 
 # **Enfrentándonos a los datos: lectura, errores y limpieza**
 
 ## Una carpeta, un archivo
 
-Lo primera aproximación, y la más evidente, es la lectura de un archivo individual. Para ello vamos a utilizar las funciones read_* que están incluidas en readr (cargado junto al tidyverse). tenemos que leer el archivo de dnase.tsv.
+Lo primera aproximación, y la más evidente, es la lectura de un archivo individual. Para ello vamos a utilizar las funciones read_* que están incluidas en readr (cargado junto al tidyverse). Tenemos que leer el archivo de dnase.tsv.
 
 ```{r, eval = FALSE}
 read_tsv(file = "./DATA/DNASE/dnase.tsv", col_names = TRUE)
@@ -61,8 +66,10 @@ head(DNase)
 Notamos que existe algo diferente en el archivo original y podemos llegar a hacer unas inferencias:
 
 - El archivo que intentamos cargar pudo haberse producido en Excel, generado celdas combinadas y producido NA al guardar como .tsv. 
-- Ademas, no queremos que los nombres de columnas esten cortados sino que reflejen todo lo que contienen. 
-- Por último, la columna Run y Concentration debe interpretarse como un factor ordenado. Hay que corregir eso:
+- Ademas, no queremos que los nombres de columnas estén cortados sino que reflejen todo lo que contienen. 
+- Por último, la columna Run y Concentration debe interpretarse como un factor ordenado. 
+
+Hay que corregir eso:
 
 ```{r, eval = FALSE}
 df_dnase <- read_tsv(file = "./DATA/DNASE/dnase.tsv", col_names = TRUE) %>% 
@@ -76,11 +83,11 @@ df_dnase <- read_tsv(file = "./DATA/DNASE/dnase.tsv", col_names = TRUE) %>%
 df_dnase
 ```
 
-De esta manera tenemos la información correctamente organizada para poder ser analizada. El formato del df que se presenta es un formato llamado largo, lo cual revisaremos en otra sección.
+De esta manera, tenemos la información correctamente organizada para poder ser analizada. El dataframe se presenta en un formato llamado largo, lo cual revisaremos en otra sección.
 
 ## Un archivo, muchas hojas (estructura de excel)
 
-Otra estrategia utilizada para tener concentrada una gran cantidad de información relacionada de alguna manera generar un solo libro de excel y aprovechar las diferentes hojas para ingresar información. Es importante que si la información es repetitiva, las tablas de las diferentes hojas tambien tengas nombres de columnas y ubicaciones similares. Sin embargo esto puede no ser del todo correcto y puede dar lugar a errores de lectura.
+Otra estrategia utilizada para tener concentrada una gran cantidad de información relacionada de alguna manera es generar un solo libro de excel y aprovechar las diferentes hojas para ingresar información. Es importante que si la información es repetitiva, las tablas de las diferentes hojas también tengas nombres de columnas y ubicaciones similares. Sin embargo esto puede no ser del todo correcto y puede dar lugar a errores de lectura.
 
 Supongamos que tenemos un libro de excel donde se guardaron los registros de un experimento tipo cinética donde se tenían diferentes ratones y se media el volumen de tumores que se les desarrollaban, a lo largo de diferentes fechas. El investigador pudo haber incluido una columna de fechas para tener todo organizado en una sola tabla, pero decidió separar cada fecha en que se revisó el experimento en diferentes hojas del libro de excel.
 
@@ -194,7 +201,7 @@ bind_rows(list_df_plates)
 
 # **Pivotar**
 
-La base de datos DNase que trabajamos anteriormente representa un formato largo, donde file representa un registro único y contiene en sus columnas toda la información necesaria para identificarse como unica. Ante una mayor inspección de DNase, podemos ver que al eliminar la variable continua que representa una medición, existen registros repetidos. Si agregamos una columna extra que indique el número de repeticion de la medición, entonces estaremos frente a un verdadero formato largo:
+La base de datos DNase que trabajamos anteriormente representa un formato largo, donde file representa un registro único y contiene en sus columnas toda la información necesaria para identificarse como única. Ante una mayor inspección de DNase, podemos ver que al eliminar la variable continua que representa una medición, existen registros repetidos. Si agregamos una columna extra que indique el número de repetición de la medición, entonces estaremos frente a un verdadero formato largo:
 
 ```{r, eval = FALSE}
 df_dnase_long <- df_dnase %>% 
@@ -252,7 +259,6 @@ flights %>%
 # **Obtención de estadística básica**
 
 Vamos a obtener utilizar de nuevo la base de datos flights. Vamos a limpiarla para eliminar vuelos cancelados y aquellos que tuvieron más de 60 minutos de retraso. Luego, vamos a producir una gráfica de barras donde podamos ver el promedio y la desviación estandar en tiempos de retraso, graficando en facetas los diferentes aeroupertos de la base de datos.
-
 
 ```{r, eval = FALSE}
 # Limpiar y obtener estadistica básica
