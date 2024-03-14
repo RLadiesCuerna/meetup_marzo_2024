@@ -251,9 +251,47 @@ flights %>%
 
 # **Obtención de estadística básica**
 
-```{r}
+Vamos a obtener utilizar de nuevo la base de datos flights. Vamos a limpiarla para eliminar vuelos cancelados y aquellos que tuvieron más de 60 minutos de retraso. Luego, vamos a producir una gráfica de barras donde podamos ver el promedio y la desviación estandar en tiempos de retraso, graficando en facetas los diferentes aeroupertos de la base de datos.
 
+
+```{r, eval = FALSE}
+# Limpiar y obtener estadistica básica
+df_flights_stat <- flights %>% 
+  filter(!is.na(dep_time), dep_delay > 60) %>% 
+  select(month, origin, dep_delay) %>% 
+  group_by(month, origin) %>% 
+  summarise(Count = n(), Mean = mean(dep_delay), SD = sd(dep_delay)) %>% 
+  mutate(month = factor(month, levels = 1:12, ordered = TRUE)) %>% 
+  ungroup() %>% 
+  left_join(data.frame(
+    month = factor(1:12, levels = 1:12, ordered = TRUE),
+    MONTH = month.abb), by = "month") %>% 
+  select(!month) %>% 
+  relocate(MONTH, .before = 1) %>% 
+  mutate(MONTH = factor(MONTH, levels = month.abb, ordered = TRUE))
+  
+  
 ```
 
 # **Gráfica**
+```{r, eval = FALSE}
+df_flights_stat %>% 
+ggplot(aes(x = MONTH, y = Mean, fill = MONTH)) +
+  facet_wrap(~ origin) + 
+  geom_bar(stat = "identity") +
+  geom_hline(yintercept = 180, linetype = "dashed", color = "red")+
+  geom_errorbar(aes(ymin = Mean - SD , ymax = Mean + SD)) +
+  scale_y_continuous(expand = c(0,0)) + 
+  scale_fill_manual(values = pals::brewer.set1(12)) +
+  labs(y = "Mean delay of departure (min)", x = "Month") +
+  theme_bw() +
+  theme(axis.title = element_text(size = 16, face = "bold"),
+        axis.text.x = element_text(size = 10, angle = 45, color = "black", hjust = 1),
+        axis.text.y = element_text(size = 14, color = "black"),
+        strip.background = element_blank(),
+        strip.text = element_text(size = 16, face = "bold"),
+        legend.position = "none")
+
+  
+```
 
