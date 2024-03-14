@@ -31,6 +31,7 @@ En este minitaller de Rladies, trabajaremos con una serie de datos que deliberad
 # **Los datos**
 
 El primer paso es conocer los datos. Para este minitaller, utilizaremos las siguientes bases de datos:
+
 - flights y planes de la paquetería nycflights13.
 - DNase preinstalada en R
 
